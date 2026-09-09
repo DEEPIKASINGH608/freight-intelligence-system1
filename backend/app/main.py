@@ -1,13 +1,21 @@
+import os
+
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.endpoints import router as api_router
 
 app = FastAPI(
-    title="Freight Intelligence & Vessel Optimization API",
-    description="Backend API for SIH Freight Forecasting, Delay Risk, and Vessel Chartering Optimization Engine.",
+    title="Maritime Freight Intelligence & Decision Optimization API",
+    description="Enterprise API engine providing ML rate forecasting, MILP charter optimization, and risk evaluation.",
     version="1.0.0"
 )
 
-# Enable CORS for Frontend communication
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,14 +24,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
+# Mount API V1 Routing
+app.include_router(api_router, prefix="/api/v1")
+
+@app.get("/", tags=["Health Check"])
+async def root():
     return {
-        "status": "online",
-        "system": "Freight Intelligence & Vessel Optimization System",
-        "version": "1.0.0"
+        "status": "ONLINE",
+        "system": "Freight Intelligence System Backend API",
+        "version": "1.0.0",
+        "docs_url": "/docs"
     }
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
