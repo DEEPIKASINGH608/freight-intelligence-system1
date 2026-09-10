@@ -1,23 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build & Output Directories
+dist/
+build/
+
+# Environment Files & Secrets
 .env
-.env.*
+.env.local
+.env.*.local
+.env.development
+.env.production
 !.env.example
 
-
-frontend/.env
-frontend/.env.*
-backend/.env
-backend/.env.*
-
-
-
-frontend/.env.example
-backend/.env.example
-
-
+# Python Cache & Compiled Files
 __pycache__/
-*.py[code]
+*.py[cod]
+*$py.class
+
+# Python Virtual Environments
 .venv/
-.env
+venv/
+ENV/
+
+# Logs & System Files
 *.log
-node_modules
-dist/
+.DS_Store

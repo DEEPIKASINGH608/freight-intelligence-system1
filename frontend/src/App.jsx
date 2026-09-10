@@ -18,14 +18,14 @@ export default function App() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  // UPDATED: Extended formData state to support all What-If Simulator metrics
+  // Form state supporting both keyboard input boxes and range sliders
   const [formData, setFormData] = useState({
     cargo_quantity_tons: 75000,
     current_freight_rate: 22.40,
     bunker_fuel_price: 620.00,
     port_congestion_days: 2.5,
-    cargo_demand_index: 105,       // UPDATED: Added Cargo Demand slider metric
-    vessel_availability_index: 92, // UPDATED: Added Vessel Availability slider metric
+    cargo_demand_index: 105,
+    vessel_availability_index: 92,
     weather_risk_index: 1.1,
     deadline_days: 30,
     origin: "Australia (Port Hedland)",
@@ -58,20 +58,19 @@ export default function App() {
     evaluateScenario();
   }, []);
 
-  // UPDATED: handleChange modified to trigger live engine recalculation on slider change
+  // Updated handler to manage both slider input and direct keyboard typing
   const handleChange = (e) => {
-    const updatedVal = parseFloat(e.target.value) || e.target.value;
-    const updatedForm = { ...formData, [e.target.name]: updatedVal };
-    setFormData(updatedForm);
+    const val = e.target.value;
+    const numericVal = val === '' ? '' : parseFloat(val);
 
-    // Dynamic local risk update for immediate UI response if congestion >= 5 days
-    if (e.target.name === 'port_congestion_days' && updatedVal >= 5) {
-      // Local preview override while backend responds
-    }
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: numericVal
+    }));
   };
 
   // Dynamic Calculation Helpers
-  const currentRate = formData.current_freight_rate || 22.4;
+  const currentRate = parseFloat(formData.current_freight_rate) || 22.4;
   const forecastRate = data?.financial_summary?.forecasted_30d_rate_usd
     ? parseFloat(data.financial_summary.forecasted_30d_rate_usd)
     : 22.56;
@@ -81,19 +80,20 @@ export default function App() {
   const surgeSign = surgePct >= 0 ? '+' : '';
 
   // Expected Total Cost in INR Crore calculation
-  // Formula: (Tons * USD/Ton * 83 INR/USD) / 10,000,000
   const usdToInrRate = 83;
-  const totalCostInrCr = ((formData.cargo_quantity_tons * forecastRate * usdToInrRate) / 10000000).toFixed(1);
+  const totalCostInrCr = (((parseFloat(formData.cargo_quantity_tons) || 0) * forecastRate * usdToInrRate) / 10000000).toFixed(1);
 
   const expectedCostDisplay = data?.financial_summary?.total_expected_cost_inr_cr
     || data?.scenario_analysis?.total_expected_cost_inr_cr
     || totalCostInrCr;
 
-  // UPDATED: Dynamic decision logic driven by slider states (e.g., high congestion -> WAIT / REROUTE)
-  const isHighRisk = formData.port_congestion_days >= 5 || formData.weather_risk_index >= 2.5;
+  // Dynamic decision logic driven by slider/input states
+  const isHighRisk = (parseFloat(formData.port_congestion_days) || 0) >= 5 || (parseFloat(formData.weather_risk_index) || 0) >= 2.5;
   const recommendedAction = isHighRisk ? "WAIT / REROUTE" : (data?.recommended_action || "CHARTER NOW");
   const riskBadgeText = isHighRisk ? "HIGH RISK" : "LOW RISK";
-  const riskScore = isHighRisk ? Math.min(85, Math.round(formData.port_congestion_days * 12 + formData.weather_risk_index * 15)) : 34;
+  const riskScore = isHighRisk
+    ? Math.min(85, Math.round((parseFloat(formData.port_congestion_days) || 0) * 12 + (parseFloat(formData.weather_risk_index) || 0) * 15))
+    : 34;
 
   return (
     <div className="min-h-screen bg-[#0b132b] text-slate-100 p-4 md:p-8 font-sans">
@@ -116,103 +116,154 @@ export default function App() {
           </div>
         </header>
 
-        {/* UPDATED: Converted drawer into interactive What-If Simulator with range sliders */}
+        {/* What-If Scenario Simulator with Sliders & Numeric Inputs */}
         <details className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden" open>
           <summary className="p-4 text-xs font-semibold uppercase tracking-wider text-slate-400 cursor-pointer flex justify-between items-center hover:text-slate-200">
             <span className="flex items-center space-x-2">
               <Sliders className="w-4 h-4 text-blue-400" />
-              {/* UPDATED: Updated label to reflect What-If Simulator functionality */}
               <span className="text-blue-400 font-bold">⚡ What-If Scenario Simulator</span>
             </span>
             <span className="text-blue-400 font-mono text-xs">Toggle Parameters</span>
           </summary>
 
-          {/* UPDATED: Form controls updated from standard input boxes to styled range sliders */}
           <div className="p-4 border-t border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 text-xs bg-slate-950/40">
 
-            {/* Slider 1: Freight Rate */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-400">
+            {/* Control 1: Freight Rate */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-slate-400">
                 <label className="font-medium">Freight Rate ($/t)</label>
-                <span className="font-mono text-blue-400 font-bold">${formData.current_freight_rate}/t</span>
+                <div className="flex items-center space-x-1">
+                  <span className="text-slate-500">$</span>
+                  <input
+                    type="number"
+                    name="current_freight_rate"
+                    step="0.1"
+                    value={formData.current_freight_rate}
+                    onChange={handleChange}
+                    className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-right text-blue-400 font-mono font-bold focus:outline-none focus:border-blue-500"
+                  />
+                  <span className="text-slate-500">/t</span>
+                </div>
               </div>
               <input
                 type="range" name="current_freight_rate" min="10" max="50" step="0.5"
-                value={formData.current_freight_rate} onChange={handleChange}
+                value={formData.current_freight_rate || 0} onChange={handleChange}
                 className="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
             </div>
 
-            {/* Slider 2: Bunker Fuel Price */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-400">
+            {/* Control 2: Bunker Fuel Price */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-slate-400">
                 <label className="font-medium">Bunker Fuel Price ($/t)</label>
-                <span className="font-mono text-blue-400 font-bold">${formData.bunker_fuel_price}/t</span>
+                <div className="flex items-center space-x-1">
+                  <span className="text-slate-500">$</span>
+                  <input
+                    type="number"
+                    name="bunker_fuel_price"
+                    step="5"
+                    value={formData.bunker_fuel_price}
+                    onChange={handleChange}
+                    className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-right text-blue-400 font-mono font-bold focus:outline-none focus:border-blue-500"
+                  />
+                  <span className="text-slate-500">/t</span>
+                </div>
               </div>
               <input
                 type="range" name="bunker_fuel_price" min="400" max="1000" step="10"
-                value={formData.bunker_fuel_price} onChange={handleChange}
+                value={formData.bunker_fuel_price || 0} onChange={handleChange}
                 className="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
             </div>
 
-            {/* Slider 3: Port Congestion (Triggers Scenario A high risk) */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-400">
+            {/* Control 3: Port Congestion (Days) */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-slate-400">
                 <label className="font-medium">Port Congestion (Days)</label>
-                <span className={`font-mono font-bold ${formData.port_congestion_days >= 5 ? 'text-red-400' : 'text-blue-400'}`}>
-                  {formData.port_congestion_days} Days
-                </span>
+                <div className="flex items-center space-x-1">
+                  <input
+                    type="number"
+                    name="port_congestion_days"
+                    step="0.5"
+                    value={formData.port_congestion_days}
+                    onChange={handleChange}
+                    className={`w-16 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-right font-mono font-bold focus:outline-none focus:border-blue-500 ${
+                      formData.port_congestion_days >= 5 ? 'text-red-400' : 'text-blue-400'
+                    }`}
+                  />
+                  <span className="text-slate-500">Days</span>
+                </div>
               </div>
               <input
                 type="range" name="port_congestion_days" min="0" max="10" step="0.5"
-                value={formData.port_congestion_days} onChange={handleChange}
+                value={formData.port_congestion_days || 0} onChange={handleChange}
                 className="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
             </div>
 
-            {/* Slider 4: Cargo Demand Index */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-400">
+            {/* Control 4: Cargo Demand Index */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-slate-400">
                 <label className="font-medium">Cargo Demand Index</label>
-                <span className="font-mono text-blue-400 font-bold">{formData.cargo_demand_index}</span>
+                <input
+                  type="number"
+                  name="cargo_demand_index"
+                  step="1"
+                  value={formData.cargo_demand_index}
+                  onChange={handleChange}
+                  className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-right text-blue-400 font-mono font-bold focus:outline-none focus:border-blue-500"
+                />
               </div>
               <input
                 type="range" name="cargo_demand_index" min="50" max="150" step="1"
-                value={formData.cargo_demand_index} onChange={handleChange}
+                value={formData.cargo_demand_index || 0} onChange={handleChange}
                 className="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
             </div>
 
-            {/* Slider 5: Vessel Availability Index */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-400">
+            {/* Control 5: Vessel Availability Index */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-slate-400">
                 <label className="font-medium">Vessel Availability Index</label>
-                <span className="font-mono text-blue-400 font-bold">{formData.vessel_availability_index}</span>
+                <input
+                  type="number"
+                  name="vessel_availability_index"
+                  step="1"
+                  value={formData.vessel_availability_index}
+                  onChange={handleChange}
+                  className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-right text-blue-400 font-mono font-bold focus:outline-none focus:border-blue-500"
+                />
               </div>
               <input
                 type="range" name="vessel_availability_index" min="50" max="150" step="1"
-                value={formData.vessel_availability_index} onChange={handleChange}
+                value={formData.vessel_availability_index || 0} onChange={handleChange}
                 className="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
             </div>
 
-            {/* Slider 6: Weather Risk Index */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-slate-400">
+            {/* Control 6: Weather Risk Index */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-slate-400">
                 <label className="font-medium">Weather Risk Index</label>
-                <span className="font-mono text-blue-400 font-bold">{formData.weather_risk_index}</span>
+                <input
+                  type="number"
+                  name="weather_risk_index"
+                  step="0.1"
+                  value={formData.weather_risk_index}
+                  onChange={handleChange}
+                  className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-right text-blue-400 font-mono font-bold focus:outline-none focus:border-blue-500"
+                />
               </div>
               <input
                 type="range" name="weather_risk_index" min="0.5" max="3.0" step="0.1"
-                value={formData.weather_risk_index} onChange={handleChange}
+                value={formData.weather_risk_index || 0} onChange={handleChange}
                 className="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
               />
             </div>
 
             <div className="col-span-1 md:col-span-3 flex justify-between items-center pt-2">
               <span className="text-[11px] text-slate-400 italic">
-                * Drag sliders to test dynamic scenarios in real time (e.g., increase port congestion to 6 days to trigger High Risk recalculation).
+                * You can drag the sliders or type exact numerical values directly into the input boxes.
               </span>
               <button
                 onClick={evaluateScenario}
@@ -238,7 +289,7 @@ export default function App() {
           <div className="flex flex-col justify-center items-center">
             <span className="text-xs uppercase font-semibold text-slate-400 tracking-wider">Cargo</span>
             <span className="text-2xl md:text-3xl font-extrabold text-white mt-1">
-              {formData.cargo_quantity_tons.toLocaleString()} t
+              {(parseFloat(formData.cargo_quantity_tons) || 0).toLocaleString()} t
             </span>
           </div>
           <div className="flex flex-col justify-center items-center pt-4 md:pt-0">
@@ -321,14 +372,13 @@ export default function App() {
             </div>
           </div>
 
-          {/* UPDATED: Dynamic Risk Matrix updated according to what-if parameters */}
+          {/* Dynamic Risk Matrix */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h2 className="text-xs uppercase font-semibold text-slate-400 tracking-wider flex items-center space-x-2">
                 <ShieldAlert className={`w-4 h-4 ${isHighRisk ? 'text-red-400' : 'text-amber-400'}`} />
                 <span>Risk Matrix</span>
               </h2>
-              {/* UPDATED: Risk status badge switches dynamically between LOW RISK and HIGH RISK */}
               <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
                 isHighRisk
                   ? 'text-red-400 bg-red-950/60 border-red-500/30'
@@ -361,7 +411,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* UPDATED: Primary Decision Banner dynamically updates recommendation based on simulation state */}
+        {/* Primary Decision Banner */}
         <div className={`border-2 rounded-xl p-6 space-y-6 transition-colors ${
           isHighRisk
             ? 'bg-red-950/20 border-red-500/50'
