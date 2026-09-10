@@ -47,7 +47,7 @@ export default function App() {
 
   const handleEvaluate = () => {
     setEvaluating(true);
-    fetch('http://127.0.0.1:8000/api/v1/evaluate', {
+    fetch('http://127.0.0.1:8000/api/v1/decision/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
@@ -213,7 +213,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Port Constraints Card */}
               {/* Scenario Comparison Panel */}
               {decisionData?.scenario_analysis && (
                 <div style={{ background: '#1e293b', padding: '1rem', borderRadius: '8px', border: '1px solid #334155' }}>
