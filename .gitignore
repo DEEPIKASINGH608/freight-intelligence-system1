@@ -12,3 +12,12 @@ backend/.env.*
 
 frontend/.env.example
 backend/.env.example
+
+
+__pycache__/
+*.py[code]
+.venv/
+.env
+*.log
+node_modules
+dist/

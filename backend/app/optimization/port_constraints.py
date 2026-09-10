@@ -1,6 +1,6 @@
 """
 Port constraints validator for SIH26006 specification.
-Validates vessel draft, LOA, beam, and cargo handling compatibility.
+Validates vessel draft, LOA, beam, DWT, and cargo handling compatibility.
 """
 
 PORT_CONSTRAINTS = {
@@ -28,7 +28,11 @@ PORT_CONSTRAINTS = {
 }
 
 
-def validate_vessel_port_compatibility(vessel: dict, port_name: str, cargo_type: str = "iron_ore") -> tuple[bool, list[str]]:
+def validate_vessel_port_compatibility(
+    vessel: dict,
+    port_name: str,
+    cargo_type: str = "iron_ore"
+) -> tuple[bool, list[str]]:
     """
     Checks if a vessel can call at the specified port given physical constraints.
     Returns (is_compatible, list_of_violations).
@@ -37,23 +41,38 @@ def validate_vessel_port_compatibility(vessel: dict, port_name: str, cargo_type:
     port = PORT_CONSTRAINTS.get(port_name)
 
     if not port:
-        # Default pass if port is not in database, but log unknown port
+        # Default pass if port is not in database, but allow fallback execution
         return True, []
 
-    if vessel.get("draft_m", 0) > port["max_draft_m"]:
-        violations.append(f"Vessel draft ({vessel.get('draft_m')}m) exceeds port max draft ({port['max_draft_m']}m)")
+    draft = vessel.get("draft_m", 0)
+    loa = vessel.get("loa_m", 0)
+    beam = vessel.get("beam_m", 0)
+    dwt = vessel.get("capacity_dwt", 0)
 
-    if vessel.get("loa_m", 0) > port["max_loa_m"]:
-        violations.append(f"Vessel LOA ({vessel.get('loa_m')}m) exceeds port max LOA ({port['max_loa_m']}m)")
+    if draft > port["max_draft_m"]:
+        violations.append(
+            f"Vessel draft ({draft}m) exceeds port max draft ({port['max_draft_m']}m)"
+        )
 
-    if vessel.get("beam_m", 0) > port["max_beam_m"]:
-        violations.append(f"Vessel beam ({vessel.get('beam_m')}m) exceeds port max beam ({port['max_beam_m']}m)")
+    if loa > port["max_loa_m"]:
+        violations.append(
+            f"Vessel LOA ({loa}m) exceeds port max LOA ({port['max_loa_m']}m)"
+        )
+
+    if beam > port["max_beam_m"]:
+        violations.append(
+            f"Vessel beam ({beam}m) exceeds port max beam ({port['max_beam_m']}m)"
+        )
 
     if cargo_type not in port["supported_cargos"]:
-        violations.append(f"Cargo type '{cargo_type}' not supported at {port_name}")
+        violations.append(
+            f"Cargo type '{cargo_type}' is not supported at {port_name} port"
+        )
 
-    if vessel.get("capacity_dwt", 0) > port["max_dwt"]:
-        violations.append(f"Vessel DWT ({vessel.get('capacity_dwt')}) exceeds port max DWT capacity ({port['max_dwt']})")
+    if dwt > port["max_dwt"]:
+        violations.append(
+            f"Vessel DWT ({dwt} MT) exceeds port max capacity ({port['max_dwt']} MT)"
+        )
 
     is_compatible = len(violations) == 0
     return is_compatible, violations
